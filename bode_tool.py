@@ -425,6 +425,15 @@ class BodeTool:
     def _set_dirty(self):
         self._dirty = True
 
+    def _data_changed(self):
+        """Called after every data mutation; marks dirty and auto-refreshes the plot."""
+        self._set_dirty()
+        if self.tree.get_children():
+            self._plot_bode(silent=True)
+        else:
+            self._init_plot()
+            self.canvas.draw_idle()
+
     def _on_close(self):
         if self._dirty and self.tree.get_children():
             if not self._dlg(
@@ -571,10 +580,6 @@ class BodeTool:
         # ── CTA buttons — anchored to bottom ──────────────────────────
         cta = tk.Frame(parent, bg=P["sidebar"], padx=12, pady=10)
         cta.pack(side=tk.BOTTOM, fill=tk.X)
-        _btn(cta, "Bode Diagramm erstellen",
-             self._plot_bode, P["accent"],
-             icon=_icon("chart")).pack(fill=tk.X, ipady=6)
-        tk.Frame(cta, bg=P["sidebar"], height=7).pack()
         _btn(cta, "Plot speichern",
              self._save_plot, P["accent"],
              icon=_icon("save")).pack(fill=tk.X, ipady=6)
@@ -610,6 +615,9 @@ class BodeTool:
         _btn(ra, "✕  Alle löschen", self._clear_all,
              "#2e4470", P["text_inv"]).grid(
             row=0, column=1, sticky="ew", padx=(4, 0))
+        _btn(ra, "↻  Aktualisieren", self._plot_bode,
+             "#2e4470", P["text_inv"]).grid(
+            row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         _section_label(parent, "Tabelle").pack(
             side=tk.BOTTOM, fill=tk.X, pady=(8, 4))
 
@@ -850,7 +858,7 @@ class BodeTool:
         for ue in (self.ue_freq, self.ue_amp, self.ue_phase):
             ue.delete(0, tk.END)
         self.ue_freq.focus()
-        self._set_dirty()
+        self._data_changed()
         self._update_status()
 
     def _delete_selected(self):
@@ -861,7 +869,7 @@ class BodeTool:
         for item in sel:
             self.tree.delete(item)
         self._retag()
-        self._set_dirty()
+        self._data_changed()
         self._update_status()
 
     def _clear_all(self):
@@ -869,6 +877,7 @@ class BodeTool:
                 self._dlg("Bestätigen", "Alle Zeilen löschen?", "confirm"):
             for item in self.tree.get_children():
                 self.tree.delete(item)
+            self._data_changed()
             self._update_status()
 
     def _on_double_click(self, event):
@@ -879,7 +888,7 @@ class BodeTool:
         col_idx = int(col.lstrip("#")) - 1
         x, y, w, h = self.tree.bbox(row, col)
         EditableCell(self.tree, row, col_idx,
-                     on_commit=self._set_dirty,
+                     on_commit=self._data_changed,
                      font=FONT, bg=P["accent_lt"],
                      fg=P["text"]).place(x=x, y=y, width=w, height=h)
 
@@ -981,7 +990,7 @@ class BodeTool:
             return
 
         self._update_status()
-        self._set_dirty()
+        self._data_changed()
         msg = f"{count} Zeilen importiert."
         if errors:
             msg += f"\n{errors} Zeile(n) übersprungen."
@@ -1051,10 +1060,11 @@ class BodeTool:
              P["accent"], padx=14).pack(side=tk.RIGHT, ipady=5)
 
     # ── Plotting ─────────────────────────────────────────────────────────────
-    def _plot_bode(self):
+    def _plot_bode(self, silent=False):
         data = self._get_sorted_data()
         if not data:
-            self._dlg("Warnung", "Keine Daten vorhanden.", "warn")
+            if not silent:
+                self._dlg("Warnung", "Keine Daten vorhanden.", "warn")
             return
 
         freqs  = np.array([d[0] for d in data])
