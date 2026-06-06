@@ -142,9 +142,10 @@ def _divider(parent) -> tk.Frame:
 
 # ── Inline cell editor ─────────────────────────────────────────────────────────
 class EditableCell(tk.Entry):
-    def __init__(self, tree, item, col_idx, **kw):
+    def __init__(self, tree, item, col_idx, on_commit=None, **kw):
         super().__init__(tree, **kw)
         self.tree, self.item, self.col_idx = tree, item, col_idx
+        self._on_commit = on_commit
         val = tree.item(item)["values"][col_idx]
         self.insert(0, str(val))
         self.select_range(0, tk.END)
@@ -163,6 +164,8 @@ class EditableCell(tk.Entry):
         vals = list(self.tree.item(self.item)["values"])
         vals[self.col_idx] = v
         self.tree.item(self.item, values=vals)
+        if self._on_commit:
+            self._on_commit()
         self.destroy()
 
 
@@ -251,11 +254,14 @@ class BodeTool:
         self.opt_markers = tk.BooleanVar(value=True)
         self.opt_grid    = tk.BooleanVar(value=True)
         self.opt_dots    = tk.BooleanVar(value=True)
+        self._dirty = False
         self._configure_ttk()
         self._build_menubar()
         self._build_ui()
         self._init_plot()
         self._bind_shortcuts()
+        self.project_var.trace_add("write", lambda *_: self._set_dirty())
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ── Menu bar ──────────────────────────────────────────────────────────────
     def _build_menubar(self):
@@ -351,6 +357,24 @@ class BodeTool:
         m_help.add_separator()
         m_help.add_command(label="  Über Bode Diagramm Tool …",
                            command=d(self._show_about))
+
+    # ── Unsaved-changes guard ──────────────────────────────────────────────────
+    def _set_dirty(self):
+        self._dirty = True
+
+    def _on_close(self):
+        if self._dirty and self.tree.get_children():
+            if not self._dlg(
+                "Beenden",
+                "Es gibt ungespeicherte Daten.\n"
+                "Vor dem Beenden als CSV speichern?",
+                "confirm",
+            ):
+                self.root.destroy()
+            else:
+                self._export_csv()
+        else:
+            self.root.destroy()
 
     # ── Keyboard shortcuts ─────────────────────────────────────────────────────
     def _bind_shortcuts(self):
@@ -760,6 +784,7 @@ class BodeTool:
         for ue in (self.ue_freq, self.ue_amp, self.ue_phase):
             ue.delete(0, tk.END)
         self.ue_freq.focus()
+        self._set_dirty()
         self._update_status()
 
     def _delete_selected(self):
@@ -770,6 +795,7 @@ class BodeTool:
         for item in sel:
             self.tree.delete(item)
         self._retag()
+        self._set_dirty()
         self._update_status()
 
     def _clear_all(self):
@@ -787,6 +813,7 @@ class BodeTool:
         col_idx = int(col.lstrip("#")) - 1
         x, y, w, h = self.tree.bbox(row, col)
         EditableCell(self.tree, row, col_idx,
+                     on_commit=self._set_dirty,
                      font=FONT, bg=P["accent_lt"],
                      fg=P["text"]).place(x=x, y=y, width=w, height=h)
 
@@ -888,6 +915,7 @@ class BodeTool:
             return
 
         self._update_status()
+        self._set_dirty()
         msg = f"{count} Zeilen importiert."
         if errors:
             msg += f"\n{errors} Zeile(n) übersprungen."
@@ -911,6 +939,7 @@ class BodeTool:
                     w.writerow([f"# Projekt: {proj}"])
                 w.writerow(COL_LABELS)
                 w.writerows(data)
+            self._dirty = False
             self._dlg("Export", f"Gespeichert:\n{path}", "info")
         except Exception as exc:
             self._dlg("Exportfehler", str(exc), "error")
@@ -1048,6 +1077,7 @@ class BodeTool:
         self._sync_title()
         self._init_plot()
         self._update_status()
+        self._dirty = False
 
     def _select_all(self):
         for item in self.tree.get_children():
