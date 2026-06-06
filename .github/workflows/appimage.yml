@@ -1,4 +1,4 @@
-name: Build AppImage
+name: Build Releases
 
 on:
   release:
@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 jobs:
+  # ── Linux AppImage ────────────────────────────────────────────────────────────
   appimage:
     runs-on: ubuntu-22.04
 
@@ -79,3 +80,44 @@ jobs:
         with:
           name: BodeDiagrammTool-AppImage
           path: BodeDiagrammTool-x86_64.AppImage
+
+  # ── Windows EXE ───────────────────────────────────────────────────────────────
+  windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python-Abhängigkeiten installieren
+        run: pip install matplotlib numpy pillow pyinstaller
+
+      - name: EXE bauen
+        run: |
+          python -m PyInstaller `
+            --name "BodeDiagrammTool" `
+            --onefile `
+            --windowed `
+            --noconfirm `
+            --add-data "icons;icons" `
+            --hidden-import "PIL._tkinter_finder" `
+            --icon "icons/icon.ico" `
+            bode_tool.py
+
+      - name: EXE zum Release hochladen
+        if: github.event_name == 'release'
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" `
+            dist/BodeDiagrammTool.exe --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: EXE als Build-Artefakt speichern
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BodeDiagrammTool-Windows
+          path: dist/BodeDiagrammTool.exe

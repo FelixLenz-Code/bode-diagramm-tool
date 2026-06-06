@@ -22,14 +22,22 @@ Desktop-Anwendung zur Visualisierung von Frequenzgängen aus gemessenen Übertra
 
 ## Download
 
-Für Linux steht ein fertiges **AppImage** bereit — kein Python, keine Installation nötig:
+Fertige Binaries ohne Installation — einfach herunterladen und starten:
 
-👉 **[BodeDiagrammTool-x86_64.AppImage](https://github.com/FelixLenz-Code/bode-diagramm-tool/releases/latest)**
+👉 **[Releases](https://github.com/FelixLenz-Code/bode-diagramm-tool/releases/latest)**
 
+| Datei | System |
+|---|---|
+| `BodeDiagrammTool-x86_64.AppImage` | Linux (x86\_64) |
+| `BodeDiagrammTool.exe` | Windows 10 / 11 (64-bit) |
+
+**Linux:**
 ```bash
 chmod +x BodeDiagrammTool-x86_64.AppImage
 ./BodeDiagrammTool-x86_64.AppImage
 ```
+
+**Windows:** `BodeDiagrammTool.exe` direkt ausführen — keine Installation nötig.
 
 ## Aus dem Quellcode starten
 
