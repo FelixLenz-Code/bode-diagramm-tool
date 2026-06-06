@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 import numpy as np
 import csv
 from pathlib import Path
+from PIL import Image, ImageDraw, ImageTk as _ITk
 
 _WIN = sys.platform == "win32"
 
@@ -47,6 +48,59 @@ FONT_LG   = (_SANS, 11, "bold")
 FONT_SM   = (_SANS, 8)
 FONT_XS   = (_SANS, 7, "bold")
 FONT_MONO = (_MONO, 9)
+
+# ── Button icons (generated via Pillow — no font/emoji dependency) ─────────────
+_ICON_REFS: dict = {}  # keeps ImageTk.PhotoImage alive (GC would blank the button)
+
+def _icon(name: str, size: int = 14) -> "_ITk.PhotoImage":
+    key = (name, size)
+    if key in _ICON_REFS:
+        return _ICON_REFS[key]
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d   = ImageDraw.Draw(img)
+    c   = (255, 255, 255, 210)
+    s, h = size, size - 1
+    cx = s // 2
+    if name == "chart":
+        d.line([0, h, s - 1, h], fill=c)
+        for i, bh in enumerate([s * 10 // 14, s * 13 // 14, s * 8 // 14]):
+            x = 1 + i * (s // 3)
+            d.rectangle([x, h - bh, x + s // 4, h - 1], fill=c)
+    elif name == "save":
+        d.rectangle([cx - 1, 1, cx + 1, s * 5 // 10], fill=c)
+        for j in range(s * 5 // 10 + 1, s - 2):
+            sp = j - s * 5 // 10
+            d.line([cx - sp, j, cx + sp, j], fill=c)
+        d.line([1, h, s - 2, h], fill=c, width=2)
+    elif name == "import":
+        # folder outline
+        d.rectangle([0, s * 3 // 10, s - 1, h], outline=c)
+        d.rectangle([0, s * 1 // 10, s * 2 // 5, s * 3 // 10], fill=c)
+        # arrow pointing down (data coming in)
+        d.rectangle([cx - 1, s * 4 // 10, cx + 1, s * 7 // 10], fill=c)
+        for j in range(s * 7 // 10 + 1, h - 1):
+            sp = j - s * 7 // 10
+            d.line([cx - sp, j, cx + sp, j], fill=c)
+    elif name == "export":
+        # folder outline
+        d.rectangle([0, s * 3 // 10, s - 1, h], outline=c)
+        d.rectangle([0, s * 1 // 10, s * 2 // 5, s * 3 // 10], fill=c)
+        # arrow pointing up (data going out)
+        top = s * 2 // 10
+        d.rectangle([cx - 1, s * 5 // 10, cx + 1, h - 2], fill=c)
+        for j in range(top, s * 5 // 10):
+            sp = s * 5 // 10 - j
+            d.line([cx - sp, j, cx + sp, j], fill=c)
+    elif name == "trash":
+        d.rectangle([s // 4, s // 4 + 1, s * 3 // 4, h - 1], outline=c)
+        d.line([s // 5, s // 4, s * 4 // 5, s // 4], fill=c, width=1)
+        d.rectangle([s * 3 // 8, 1, s * 5 // 8, s // 4], outline=c)
+        for x in [s * 2 // 5, cx, s * 3 // 5]:
+            d.line([x, s // 3 + 1, x, h - 2], fill=c)
+    photo = _ITk.PhotoImage(img)
+    _ICON_REFS[key] = photo
+    return photo
+
 
 CSV_HELP = """\
 Die App erkennt CSV-Dateien automatisch (Trennzeichen, Dezimalzeichen).
@@ -109,13 +163,17 @@ def v_to_db(volts: float) -> float:
     return 20.0 * np.log10(volts)
 
 
-def _btn(parent, text, cmd, bg, fg="#ffffff", width=None, **kw):
+def _btn(parent, text, cmd, bg, fg="#ffffff", width=None, icon=None, **kw):
     """Flat colored tk.Button with hover effect."""
     props = dict(bg=bg, fg=fg, activebackground=_shade(bg, -20),
                  activeforeground=fg, relief="flat", bd=0,
                  cursor="hand2", font=FONT_B, padx=10, pady=5)
     if width:
         props["width"] = width
+    if icon is not None:
+        props["image"]    = icon
+        props["compound"] = tk.LEFT
+        props["padx"]     = 8
     props.update(kw)
     b = tk.Button(parent, text=text, command=cmd, **props)
     b.bind("<Enter>", lambda _: b.config(bg=_shade(bg, -20)))
@@ -514,10 +572,12 @@ class BodeTool:
         cta = tk.Frame(parent, bg=P["sidebar"], padx=12, pady=10)
         cta.pack(side=tk.BOTTOM, fill=tk.X)
         _btn(cta, "Bode Diagramm erstellen",
-             self._plot_bode, P["accent"]).pack(fill=tk.X, ipady=6)
+             self._plot_bode, P["accent"],
+             icon=_icon("chart")).pack(fill=tk.X, ipady=6)
         tk.Frame(cta, bg=P["sidebar"], height=7).pack()
         _btn(cta, "Plot speichern",
-             self._save_plot, P["accent"]).pack(fill=tk.X, ipady=6)
+             self._save_plot, P["accent"],
+             icon=_icon("save")).pack(fill=tk.X, ipady=6)
 
         # ── Section: Datei ─────────────────────────────────────────────
         _divider(parent).pack(side=tk.BOTTOM, fill=tk.X)
@@ -525,13 +585,14 @@ class BodeTool:
         fa.pack(side=tk.BOTTOM, fill=tk.X)
         fa.columnconfigure(0, weight=1)
         fa.columnconfigure(1, weight=1)
-        for i, (lbl, cmd) in enumerate([
-            ("CSV importieren", self._import_csv),
-            ("CSV exportieren", self._export_csv),
-            ("?  CSV-Format",       self._show_csv_help),
+        for i, (lbl, cmd, ico) in enumerate([
+            ("CSV importieren", self._import_csv,   "import"),
+            ("CSV exportieren", self._export_csv,   "export"),
+            ("?  CSV-Format",   self._show_csv_help, None),
         ]):
             r, c = divmod(i, 2)
-            _btn(fa, lbl, cmd, "#2e4470", P["text_inv"]).grid(
+            _btn(fa, lbl, cmd, "#2e4470", P["text_inv"],
+                 icon=_icon(ico) if ico else None).grid(
                 row=r, column=c, sticky="ew",
                 padx=(0, 4) if c == 0 else (4, 0), pady=(0, 5))
         _section_label(parent, "Datei").pack(
@@ -544,7 +605,7 @@ class BodeTool:
         ra.columnconfigure(0, weight=1)
         ra.columnconfigure(1, weight=1)
         _btn(ra, "Zeile löschen", self._delete_selected,
-             "#2e4470", P["text_inv"]).grid(
+             "#2e4470", P["text_inv"], icon=_icon("trash")).grid(
             row=0, column=0, sticky="ew", padx=(0, 4))
         _btn(ra, "✕  Alle löschen", self._clear_all,
              "#2e4470", P["text_inv"]).grid(
