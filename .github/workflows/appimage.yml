@@ -24,6 +24,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y python3-tk libfuse2 fonts-noto-color-emoji
+          sudo fc-cache -f
 
       - name: Python-Abhängigkeiten installieren
         run: pip install matplotlib numpy pillow pyinstaller
@@ -63,7 +64,12 @@ jobs:
 
           # Bundle Noto Color Emoji so buttons render correctly on all systems
           EMOJI_FONT=$(fc-list | grep -i "NotoColorEmoji" | head -1 | cut -d: -f1)
-          [ -n "$EMOJI_FONT" ] && cp "$EMOJI_FONT" "$APPDIR/usr/share/fonts/"
+          if [ -z "$EMOJI_FONT" ]; then
+            echo "ERROR: NotoColorEmoji not found by fc-list" >&2
+            exit 1
+          fi
+          cp "$EMOJI_FONT" "$APPDIR/usr/share/fonts/"
+          echo "Bundled emoji font: $EMOJI_FONT"
 
       - name: AppImage bauen
         run: |

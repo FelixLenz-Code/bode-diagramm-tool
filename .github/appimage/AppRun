@@ -4,18 +4,24 @@ HERE=$(dirname "$SELF")
 
 # Write a temporary fontconfig that includes the bundled emoji font
 # so Tk finds it even when the system fontconfig differs from the build host.
+# Note: no DOCTYPE declaration — missing fonts.dtd on the target system would
+# cause a parse failure and silently disable the entire custom config.
 FONTS_CONF=$(mktemp /tmp/bode-fontconfig-XXXXXX.conf)
+FC_CACHE_DIR=$(mktemp -d /tmp/bode-fccache-XXXXXX)
 cat > "$FONTS_CONF" << EOCONF
 <?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
 <fontconfig>
+  <dir>$HERE/usr/share/fonts</dir>
   <dir>/usr/share/fonts</dir>
   <dir>/usr/local/share/fonts</dir>
-  <dir>$HERE/usr/share/fonts</dir>
-  <cachedir prefix="xdg">fontconfig</cachedir>
-  <include ignore_missing="yes">/etc/fonts/conf.d</include>
+  <cachedir>$FC_CACHE_DIR</cachedir>
+  <include ignore_missing="yes">/etc/fonts/fonts.conf</include>
 </fontconfig>
 EOCONF
 export FONTCONFIG_FILE="$FONTS_CONF"
+
+# Pre-build fontconfig cache for the bundled fonts dir so Tk finds the font
+# without needing write access to the system cache.
+fc-cache "$HERE/usr/share/fonts" 2>/dev/null || true
 
 exec "$HERE/usr/bin/BodeDiagrammTool" "$@"
