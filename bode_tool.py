@@ -4,6 +4,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 import numpy as np
 import csv
+from pathlib import Path
 
 # ── Data constants ─────────────────────────────────────────────────────────────
 COLUMNS    = ("freq", "amplitude", "phase")
@@ -1099,5 +1100,9 @@ class BodeTool:
 # ── Entry point ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     root = tk.Tk()
+    _icon = Path(__file__).parent / "icon.png"
+    if _icon.exists():
+        _img = tk.PhotoImage(file=str(_icon))
+        root.iconphoto(True, _img)
     BodeTool(root)
     root.mainloop()
