@@ -20,7 +20,20 @@ Desktop-Anwendung zur Visualisierung von Frequenzgängen aus gemessenen Übertra
 - Inline-Bearbeitung: Doppelklick auf Tabellenzellen
 - Plot-Export als PNG, PDF oder SVG
 
-## Voraussetzungen
+## Download
+
+Für Linux steht ein fertiges **AppImage** bereit — kein Python, keine Installation nötig:
+
+👉 **[BodeDiagrammTool-x86_64.AppImage](https://github.com/FelixLenz-Code/bode-diagramm-tool/releases/latest)**
+
+```bash
+chmod +x BodeDiagrammTool-x86_64.AppImage
+./BodeDiagrammTool-x86_64.AppImage
+```
+
+## Aus dem Quellcode starten
+
+### Voraussetzungen
 
 ```
 Python >= 3.10
@@ -33,13 +46,13 @@ Unter Linux ggf. zusätzlich:
 sudo apt install python3-tk
 ```
 
-## Starten
+### Starten
 
 ```bash
 python bode_tool.py
 ```
 
-Unter Linux steht alternativ das mitgelieferte Startskript bereit:
+Oder per mitgeliefertem Startskript:
 
 ```bash
 bash "Bode Tool starten.sh"
