@@ -1305,7 +1305,12 @@ if __name__ == "__main__":
     _base = Path(sys._MEIPASS) if getattr(sys, "frozen", False) else Path(__file__).parent
     _app_icon = _base / "icons" / "icon.png"
     if _app_icon.exists():
-        _img = tk.PhotoImage(file=str(_app_icon))
-        root.iconphoto(True, _img)
+        try:
+            # Use Pillow's ImageTk — more robust PNG reader than tk.PhotoImage,
+            # especially inside AppImage / PyInstaller environments.
+            _img = _ITk.PhotoImage(Image.open(str(_app_icon)))
+            root.iconphoto(True, _img)
+        except Exception:
+            pass
     BodeTool(root)
     root.mainloop()
