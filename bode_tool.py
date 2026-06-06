@@ -239,9 +239,7 @@ class EditableCell(tk.Entry):
 class UnitEntry(tk.Frame):
     def __init__(self, parent, units: list[str], default_unit: str,
                  entry_width=12, fixed_unit=False, **kw):
-        super().__init__(parent, bg=P["header2"],
-                         highlightbackground=P["sep"],
-                         highlightthickness=1, bd=0, **kw)
+        super().__init__(parent, bg=P["header2"], bd=0, **kw)
         self.unit_var = tk.StringVar(value=default_unit)
         self._units   = units
 
@@ -299,7 +297,11 @@ class UnitEntry(tk.Frame):
                lbl.winfo_rooty() + lbl.winfo_height() + 2)
 
     def _highlight(self, on: bool):
-        self.config(highlightbackground=P["accent"] if on else P["sep"])
+        # Color the wrapper frame (master) — it provides the visible border
+        try:
+            self.master.configure(bg=P["accent"] if on else P["sep"])
+        except tk.TclError:
+            pass
 
     def get(self) -> str:        return self.entry.get()
     def unit(self) -> str:       return self.unit_var.get()
@@ -754,9 +756,14 @@ class BodeTool:
                  font=FONT, anchor="w").grid(
             row=row, column=0, sticky="w", pady=(0, 6))
 
-        ue = UnitEntry(parent, units, default,
-                       entry_width=11, fixed_unit=fixed_unit)
-        ue.grid(row=row, column=1, sticky="ew", padx=(6, 0), pady=(0, 6))
+        # Wrapper frame provides a reliable 1px border on all platforms.
+        # On Windows, highlightthickness on a Frame is only visible when
+        # focused, so we use the wrapper's bg as the persistent border color.
+        bdr = tk.Frame(parent, bg=P["sep"], padx=1, pady=1)
+        bdr.grid(row=row, column=1, sticky="ew", padx=(6, 0), pady=(0, 6))
+        bdr.columnconfigure(0, weight=1)
+        ue = UnitEntry(bdr, units, default, entry_width=11, fixed_unit=fixed_unit)
+        ue.pack(fill=tk.X)
         parent.columnconfigure(1, weight=1)
         return ue
 
