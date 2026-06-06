@@ -205,10 +205,11 @@ def _divider(parent) -> tk.Frame:
 
 # ── Inline cell editor ─────────────────────────────────────────────────────────
 class EditableCell(tk.Entry):
-    def __init__(self, tree, item, col_idx, on_commit=None, **kw):
+    def __init__(self, tree, item, col_idx, on_commit=None, on_before_commit=None, **kw):
         super().__init__(tree, **kw)
         self.tree, self.item, self.col_idx = tree, item, col_idx
         self._on_commit = on_commit
+        self._on_before_commit = on_before_commit
         val = tree.item(item)["values"][col_idx]
         self.insert(0, str(val))
         self.select_range(0, tk.END)
@@ -224,6 +225,8 @@ class EditableCell(tk.Entry):
         except ValueError:
             self.destroy()
             return
+        if self._on_before_commit:
+            self._on_before_commit()
         vals = list(self.tree.item(self.item)["values"])
         vals[self.col_idx] = v
         self.tree.item(self.item, values=vals)
@@ -318,6 +321,8 @@ class BodeTool:
         self.opt_grid    = tk.BooleanVar(value=True)
         self.opt_dots    = tk.BooleanVar(value=True)
         self._dirty = False
+        self._undo_stack: list = []
+        self._redo_stack: list = []
         self._configure_ttk()
         self._build_menubar()
         self._build_ui()
@@ -374,8 +379,16 @@ class BodeTool:
 
         # ── Bearbeiten ─────────────────────────────────────────────────
         m_edit = tk.Menu(bar, tearoff=0, **MK)
+        self._m_edit = m_edit
         bar.add_cascade(label="  Bearbeiten  ", menu=m_edit)
 
+        m_edit.add_command(label="  Rückgängig",
+                           command=d(self._undo), accelerator="Strg+Z",
+                           state="disabled")
+        m_edit.add_command(label="  Wiederherstellen",
+                           command=d(self._redo), accelerator="Strg+Y",
+                           state="disabled")
+        m_edit.add_separator()
         m_edit.add_command(label="  Zeile löschen",
                            command=d(self._delete_selected), accelerator="Entf")
         m_edit.add_command(label="  Alle Zeilen löschen",
@@ -434,6 +447,61 @@ class BodeTool:
             self._init_plot()
             self.canvas.draw_idle()
 
+    # ── Undo / Redo ───────────────────────────────────────────────────────────
+    _MAX_UNDO = 50
+
+    def _snapshot(self):
+        return tuple(
+            tuple(self.tree.item(i)["values"])
+            for i in self.tree.get_children()
+        )
+
+    def _save_undo_state(self):
+        state = self._snapshot()
+        if self._undo_stack and self._undo_stack[-1] == state:
+            return
+        self._undo_stack.append(state)
+        if len(self._undo_stack) > self._MAX_UNDO:
+            del self._undo_stack[0]
+        self._redo_stack.clear()
+        self._update_undo_menu()
+
+    def _undo(self):
+        if not self._undo_stack:
+            return
+        self._redo_stack.append(self._snapshot())
+        self._restore_state(self._undo_stack.pop())
+        self._update_undo_menu()
+
+    def _redo(self):
+        if not self._redo_stack:
+            return
+        self._undo_stack.append(self._snapshot())
+        self._restore_state(self._redo_stack.pop())
+        self._update_undo_menu()
+
+    def _restore_state(self, state):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for idx, row in enumerate(state):
+            self.tree.insert("", tk.END, values=row,
+                             tags=("odd" if idx % 2 else "even",))
+        self._set_dirty()
+        self._update_status()
+        if state:
+            self._plot_bode(silent=True)
+        else:
+            self._init_plot()
+            self.canvas.draw_idle()
+
+    def _update_undo_menu(self):
+        self._m_edit.entryconfig(
+            "  Rückgängig",
+            state="normal" if self._undo_stack else "disabled")
+        self._m_edit.entryconfig(
+            "  Wiederherstellen",
+            state="normal" if self._redo_stack else "disabled")
+
     def _on_close(self):
         if self._dirty and self.tree.get_children():
             if not self._dlg(
@@ -451,16 +519,21 @@ class BodeTool:
     # ── Keyboard shortcuts ─────────────────────────────────────────────────────
     def _bind_shortcuts(self):
         for seq, fn in [
-            ("<Control-n>", self._new_project),
-            ("<Control-N>", self._new_project),
-            ("<Control-o>", self._import_csv),
-            ("<Control-O>", self._import_csv),
-            ("<Control-s>", self._export_csv),
-            ("<Control-S>", self._export_csv),
-            ("<Control-a>", self._select_all),
-            ("<Control-A>", self._select_all),
-            ("<F5>",        self._plot_bode),
-            ("<F1>",        self._show_csv_help),
+            ("<Control-n>",       self._new_project),
+            ("<Control-N>",       self._new_project),
+            ("<Control-o>",       self._import_csv),
+            ("<Control-O>",       self._import_csv),
+            ("<Control-s>",       self._export_csv),
+            ("<Control-S>",       self._export_csv),
+            ("<Control-a>",       self._select_all),
+            ("<Control-A>",       self._select_all),
+            ("<Control-z>",       self._undo),
+            ("<Control-Z>",       self._undo),
+            ("<Control-y>",       self._redo),
+            ("<Control-Y>",       self._redo),
+            ("<Control-Shift-Z>", self._redo),
+            ("<F5>",              self._plot_bode),
+            ("<F1>",              self._show_csv_help),
         ]:
             self.root.bind_all(seq, lambda _, f=fn: f())
 
@@ -850,6 +923,7 @@ class BodeTool:
             self._dlg("Eingabefehler",
                       str(exc) or "Bitte gültige Zahlen eingeben.", "error")
             return
+        self._save_undo_state()
         n = len(self.tree.get_children())
         tag = "odd" if n % 2 else "even"
         self.tree.insert("", tk.END,
@@ -866,6 +940,7 @@ class BodeTool:
         if not sel:
             self._dlg("Hinweis", "Keine Zeile ausgewählt.", "info")
             return
+        self._save_undo_state()
         for item in sel:
             self.tree.delete(item)
         self._retag()
@@ -875,6 +950,7 @@ class BodeTool:
     def _clear_all(self):
         if self.tree.get_children() and \
                 self._dlg("Bestätigen", "Alle Zeilen löschen?", "confirm"):
+            self._save_undo_state()
             for item in self.tree.get_children():
                 self.tree.delete(item)
             self._data_changed()
@@ -888,11 +964,13 @@ class BodeTool:
         col_idx = int(col.lstrip("#")) - 1
         x, y, w, h = self.tree.bbox(row, col)
         EditableCell(self.tree, row, col_idx,
+                     on_before_commit=self._save_undo_state,
                      on_commit=self._data_changed,
                      font=FONT, bg=P["accent_lt"],
                      fg=P["text"]).place(x=x, y=y, width=w, height=h)
 
     def _sort(self, col):
+        self._save_undo_state()
         col_idx = COLUMNS.index(col)
         data = [(float(self.tree.item(k)["values"][col_idx]), k)
                 for k in self.tree.get_children()]
@@ -922,6 +1000,7 @@ class BodeTool:
             filetypes=[("CSV Dateien", "*.csv"), ("Alle Dateien", "*.*")])
         if not path:
             return
+        self._save_undo_state()
         delim, decimal = self._sniff(path)
 
         def parse(s):
