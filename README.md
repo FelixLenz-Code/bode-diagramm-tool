@@ -1,6 +1,6 @@
 # 📈 Bode Diagramm Tool
 
-Desktop-Anwendung zur Visualisierung von Frequenzgängen aus gemessenen Übertragungsverhalten — entwickelt im Rahmen des FEM-Labors an der **Hochschule RheinMain (HSRM)**.
+Desktop-Anwendung zur Visualisierung von Frequenzgängen aus gemessenen Übertragungsverhalten.
 
 ---
 
