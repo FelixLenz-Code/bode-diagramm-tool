@@ -33,6 +33,12 @@ sudo apt install python3-tk
 python bode_tool.py
 ```
 
+Unter Linux steht alternativ das mitgelieferte Startskript bereit:
+
+```bash
+bash "Bode Tool starten.sh"
+```
+
 ## CSV-Format
 
 ```
