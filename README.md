@@ -8,13 +8,6 @@ Desktop-Anwendung zur Visualisierung von Frequenzgängen aus gemessenen Übertra
 
 ![Hauptfenster mit Bode-Diagramm](screenshots/main.png)
 
-<details>
-<summary>CSV-Format Anleitung</summary>
-
-![CSV-Format Anleitung](screenshots/csv_help.png)
-
-</details>
-
 ---
 
 ## Features
