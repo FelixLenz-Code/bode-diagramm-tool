@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Bode Diagramm Tool
+Exec=BodeDiagrammTool
+Icon=bode-diagramm-tool
+Type=Application
+Categories=Science;
+Comment=Visualisierung von Frequenzgängen (Bode-Diagramme)

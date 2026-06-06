@@ -1,0 +1,81 @@
+name: Build AppImage
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: System-Abhängigkeiten installieren
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y python3-tk libfuse2
+
+      - name: Python-Abhängigkeiten installieren
+        run: pip install matplotlib numpy pillow pyinstaller
+
+      - name: PyInstaller-Bundle bauen
+        run: |
+          python -m PyInstaller \
+            --name "BodeDiagrammTool" \
+            --onedir \
+            --windowed \
+            --noconfirm \
+            --add-data "icons:icons" \
+            --hidden-import "PIL._tkinter_finder" \
+            bode_tool.py
+
+      - name: appimagetool herunterladen
+        run: |
+          curl -fsSL -o appimagetool \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+
+      - name: AppDir zusammenstellen
+        run: |
+          APPDIR=BodeDiagrammTool.AppDir
+          mkdir -p "$APPDIR/usr/bin" \
+                   "$APPDIR/usr/share/applications" \
+                   "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+
+          cp -r dist/BodeDiagrammTool/*   "$APPDIR/usr/bin/"
+          cp icons/icon.png               "$APPDIR/bode-diagramm-tool.png"
+          cp icons/icon.png               "$APPDIR/usr/share/icons/hicolor/256x256/apps/bode-diagramm-tool.png"
+          cp .github/appimage/AppRun      "$APPDIR/AppRun"
+          chmod +x                        "$APPDIR/AppRun"
+          cp .github/appimage/bode-diagramm-tool.desktop "$APPDIR/bode-diagramm-tool.desktop"
+          cp .github/appimage/bode-diagramm-tool.desktop "$APPDIR/usr/share/applications/"
+
+      - name: AppImage bauen
+        run: |
+          ARCH=x86_64 ./appimagetool \
+            BodeDiagrammTool.AppDir \
+            BodeDiagrammTool-x86_64.AppImage
+
+      - name: AppImage zum Release hochladen
+        if: github.event_name == 'release'
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            BodeDiagrammTool-x86_64.AppImage --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: AppImage als Build-Artefakt speichern
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BodeDiagrammTool-AppImage
+          path: BodeDiagrammTool-x86_64.AppImage
