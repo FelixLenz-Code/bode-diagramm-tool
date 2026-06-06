@@ -1304,7 +1304,9 @@ class BodeTool:
 # ── Entry point ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     root = tk.Tk()
-    _app_icon = Path(__file__).parent / "icons" / "icon.png"
+    # In a PyInstaller bundle, data files land in sys._MEIPASS, not next to __file__
+    _base = Path(sys._MEIPASS) if getattr(sys, "frozen", False) else Path(__file__).parent
+    _app_icon = _base / "icons" / "icon.png"
     if _app_icon.exists():
         _img = tk.PhotoImage(file=str(_app_icon))
         root.iconphoto(True, _img)
