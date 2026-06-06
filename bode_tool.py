@@ -513,10 +513,10 @@ class BodeTool:
         # ── CTA buttons — anchored to bottom ──────────────────────────
         cta = tk.Frame(parent, bg=P["sidebar"], padx=12, pady=10)
         cta.pack(side=tk.BOTTOM, fill=tk.X)
-        _btn(cta, "📊  Bode Diagramm erstellen",
+        _btn(cta, "Bode Diagramm erstellen",
              self._plot_bode, P["accent"]).pack(fill=tk.X, ipady=6)
         tk.Frame(cta, bg=P["sidebar"], height=7).pack()
-        _btn(cta, "🖼  Plot speichern",
+        _btn(cta, "Plot speichern",
              self._save_plot, P["accent"]).pack(fill=tk.X, ipady=6)
 
         # ── Section: Datei ─────────────────────────────────────────────
@@ -526,8 +526,8 @@ class BodeTool:
         fa.columnconfigure(0, weight=1)
         fa.columnconfigure(1, weight=1)
         for i, (lbl, cmd) in enumerate([
-            ("📂  CSV importieren", self._import_csv),
-            ("💾  CSV exportieren", self._export_csv),
+            ("CSV importieren", self._import_csv),
+            ("CSV exportieren", self._export_csv),
             ("?  CSV-Format",       self._show_csv_help),
         ]):
             r, c = divmod(i, 2)
@@ -543,7 +543,7 @@ class BodeTool:
         ra.pack(side=tk.BOTTOM, fill=tk.X)
         ra.columnconfigure(0, weight=1)
         ra.columnconfigure(1, weight=1)
-        _btn(ra, "🗑  Zeile löschen", self._delete_selected,
+        _btn(ra, "Zeile löschen", self._delete_selected,
              "#2e4470", P["text_inv"]).grid(
             row=0, column=0, sticky="ew", padx=(0, 4))
         _btn(ra, "✕  Alle löschen", self._clear_all,
@@ -1131,7 +1131,7 @@ class BodeTool:
                      font=fnt, anchor="w").pack(anchor="w", pady=(0, bot_pad))
 
         gh_url = "github.com/FelixLenz-Code/bode-diagramm-tool"
-        gh_lbl = tk.Label(body, text=f"🔗  {gh_url}",
+        gh_lbl = tk.Label(body, text=f">> {gh_url}",
                           bg=P["sidebar"], fg=P["accent"],
                           font=FONT_SM, anchor="w", cursor="hand2")
         gh_lbl.pack(anchor="w")
