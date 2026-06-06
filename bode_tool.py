@@ -396,6 +396,9 @@ class BodeTool:
         m_edit.add_command(label="  Alle Zeilen löschen",
                            command=d(self._clear_all))
         m_edit.add_separator()
+        m_edit.add_command(label="  Diagramm aktualisieren",
+                           command=d(self._plot_bode), accelerator="F5")
+        m_edit.add_separator()
         m_edit.add_command(label="  Alle auswählen",
                            command=d(self._select_all), accelerator="Strg+A")
         m_edit.add_separator()
@@ -410,9 +413,6 @@ class BodeTool:
         m_view = tk.Menu(bar, tearoff=0, **MK)
         bar.add_cascade(label="  Ansicht  ", menu=m_view)
 
-        m_view.add_command(label="  Bode Diagramm erstellen",
-                           command=d(self._plot_bode), accelerator="F5")
-        m_view.add_separator()
         m_view.add_checkbutton(
             label="  −3 dB / −45° Markierungen",
             variable=self.opt_markers, command=d(self._plot_bode),
@@ -690,9 +690,6 @@ class BodeTool:
         _btn(ra, "✕  Alle löschen", self._clear_all,
              "#2e4470", P["text_inv"]).grid(
             row=0, column=1, sticky="ew", padx=(4, 0))
-        _btn(ra, "↻  Aktualisieren", self._plot_bode,
-             "#2e4470", P["text_inv"]).grid(
-            row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         _section_label(parent, "Tabelle").pack(
             side=tk.BOTTOM, fill=tk.X, pady=(8, 4))
 
