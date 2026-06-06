@@ -1062,10 +1062,14 @@ class BodeTool:
                     linestyle=":", linewidth=0.5, alpha=0.6)
         self.canvas.draw_idle()
 
+    def _open_url(self, url: str):
+        import webbrowser
+        webbrowser.open(url)
+
     def _show_about(self):
         win = tk.Toplevel(self.root)
         win.title("Über Bode Diagramm Tool")
-        win.geometry("380x270")
+        win.geometry("380x290")
         win.configure(bg=P["sidebar"])
         win.resizable(False, False)
 
@@ -1086,10 +1090,18 @@ class BodeTool:
             ("Visualisierung von Frequenzgängen",          P["text_inv"], FONT,    2),
             ("aus gemessenen Übertragungsverhalten.",       P["text_inv"], FONT,    12),
             ("Eingabe:  Frequenz  ·  Amplitude  ·  Phase",  P["muted"],   FONT_SM, 3),
-            ("Export:   CSV  ·  PNG  ·  PDF  ·  SVG",       P["muted"],   FONT_SM, 0),
+            ("Export:   CSV  ·  PNG  ·  PDF  ·  SVG",       P["muted"],   FONT_SM, 12),
         ]:
             tk.Label(body, text=text, bg=P["sidebar"], fg=col,
                      font=fnt, anchor="w").pack(anchor="w", pady=(0, bot_pad))
+
+        gh_url = "github.com/FelixLenz-Code/bode-diagramm-tool"
+        gh_lbl = tk.Label(body, text=f"🔗  {gh_url}",
+                          bg=P["sidebar"], fg=P["accent"],
+                          font=FONT_SM, anchor="w", cursor="hand2")
+        gh_lbl.pack(anchor="w")
+        gh_lbl.bind("<Button-1>", lambda _: self._open_url(
+            "https://github.com/FelixLenz-Code/bode-diagramm-tool"))
 
         _divider(win).pack(fill=tk.X)
         foot = tk.Frame(win, bg=P["sidebar"])
