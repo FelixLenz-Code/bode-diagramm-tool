@@ -1,4 +1,21 @@
 #!/bin/bash
 SELF=$(readlink -f "$0")
 HERE=$(dirname "$SELF")
+
+# Write a temporary fontconfig that includes the bundled emoji font
+# so Tk finds it even when the system fontconfig differs from the build host.
+FONTS_CONF=$(mktemp /tmp/bode-fontconfig-XXXXXX.conf)
+cat > "$FONTS_CONF" << EOCONF
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>/usr/share/fonts</dir>
+  <dir>/usr/local/share/fonts</dir>
+  <dir>$HERE/usr/share/fonts</dir>
+  <cachedir prefix="xdg">fontconfig</cachedir>
+  <include ignore_missing="yes">/etc/fonts/conf.d</include>
+</fontconfig>
+EOCONF
+export FONTCONFIG_FILE="$FONTS_CONF"
+
 exec "$HERE/usr/bin/BodeDiagrammTool" "$@"

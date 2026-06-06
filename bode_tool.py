@@ -1,3 +1,4 @@
+import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -5,6 +6,8 @@ from matplotlib.figure import Figure
 import numpy as np
 import csv
 from pathlib import Path
+
+_WIN = sys.platform == "win32"
 
 # ── Data constants ─────────────────────────────────────────────────────────────
 COLUMNS    = ("freq", "amplitude", "phase")
@@ -36,12 +39,14 @@ P = {
     "sep":        "#2e4470",   # separator on dark bg
 }
 
-FONT      = ("Segoe UI", 9)
-FONT_B    = ("Segoe UI", 9,  "bold")
-FONT_LG   = ("Segoe UI", 11, "bold")
-FONT_SM   = ("Segoe UI", 8)
-FONT_XS   = ("Segoe UI", 7, "bold")
-FONT_MONO = ("Courier New", 9)
+_SANS  = "Segoe UI"   if _WIN else "Sans"
+_MONO  = "Courier New" if _WIN else "Monospace"
+FONT      = (_SANS, 9)
+FONT_B    = (_SANS, 9,  "bold")
+FONT_LG   = (_SANS, 11, "bold")
+FONT_SM   = (_SANS, 8)
+FONT_XS   = (_SANS, 7, "bold")
+FONT_MONO = (_MONO, 9)
 
 CSV_HELP = """\
 Die App erkennt CSV-Dateien automatisch (Trennzeichen, Dezimalzeichen).
@@ -441,10 +446,10 @@ class BodeTool:
         hdr.pack_propagate(False)
 
         tk.Label(hdr, text="📈", bg=P["header"],
-                 font=("Segoe UI Emoji", 20)).pack(side=tk.LEFT, padx=(16, 6))
+                 font=(_SANS, 20)).pack(side=tk.LEFT, padx=(16, 6))
         tk.Label(hdr, text="Bode Diagramm Tool",
                  bg=P["header"], fg=P["text_inv"],
-                 font=("Segoe UI", 14, "bold")).pack(side=tk.LEFT, padx=(0, 28))
+                 font=(_SANS, 14, "bold")).pack(side=tk.LEFT, padx=(0, 28))
 
         tk.Label(hdr, text="Projektname:",
                  bg=P["header"], fg=P["muted"],
@@ -454,7 +459,7 @@ class BodeTool:
         proj_e = tk.Entry(hdr, textvariable=self.project_var,
                           bg=P["header2"], fg=P["text_inv"],
                           insertbackground=P["text_inv"],
-                          relief="flat", bd=0, font=("Segoe UI", 11),
+                          relief="flat", bd=0, font=(_SANS, 11),
                           width=32)
         proj_e.pack(side=tk.LEFT, ipady=6, padx=(0, 4))
         proj_e.bind("<KeyRelease>", lambda _: self._sync_title())

@@ -23,7 +23,7 @@ jobs:
       - name: System-Abhängigkeiten installieren
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y python3-tk libfuse2
+          sudo apt-get install -y python3-tk libfuse2 fonts-noto-color-emoji
 
       - name: Python-Abhängigkeiten installieren
         run: pip install matplotlib numpy pillow pyinstaller
@@ -50,7 +50,8 @@ jobs:
           APPDIR=BodeDiagrammTool.AppDir
           mkdir -p "$APPDIR/usr/bin" \
                    "$APPDIR/usr/share/applications" \
-                   "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+                   "$APPDIR/usr/share/icons/hicolor/256x256/apps" \
+                   "$APPDIR/usr/share/fonts"
 
           cp -r dist/BodeDiagrammTool/*   "$APPDIR/usr/bin/"
           cp icons/icon.png               "$APPDIR/bode-diagramm-tool.png"
@@ -59,6 +60,10 @@ jobs:
           chmod +x                        "$APPDIR/AppRun"
           cp .github/appimage/bode-diagramm-tool.desktop "$APPDIR/bode-diagramm-tool.desktop"
           cp .github/appimage/bode-diagramm-tool.desktop "$APPDIR/usr/share/applications/"
+
+          # Bundle Noto Color Emoji so buttons render correctly on all systems
+          EMOJI_FONT=$(fc-list | grep -i "NotoColorEmoji" | head -1 | cut -d: -f1)
+          [ -n "$EMOJI_FONT" ] && cp "$EMOJI_FONT" "$APPDIR/usr/share/fonts/"
 
       - name: AppImage bauen
         run: |
