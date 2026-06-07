@@ -30,7 +30,7 @@ Fertige Binaries ohne Installation — einfach herunterladen und starten:
 |---|---|
 | `BodeDiagrammTool-x86_64.AppImage` | Linux (x86\_64) |
 | `BodeDiagrammTool.exe` | Windows 10 / 11 (64-bit) |
-| `BodeDiagrammTool-macOS.dmg` | macOS (Intel · Apple Silicon via Rosetta 2) |
+| `BodeDiagrammTool-macOS.dmg` | macOS (Apple Silicon — M1/M2/M3) |
 
 **Linux:**
 ```bash
@@ -40,7 +40,7 @@ chmod +x BodeDiagrammTool-x86_64.AppImage
 
 **Windows:** `BodeDiagrammTool.exe` direkt ausführen — keine Installation nötig.
 
-**macOS:** DMG öffnen, `.app` in den Programme-Ordner ziehen und starten. Da die App nicht von Apple signiert ist, erscheint beim ersten Start ein Sicherheitshinweis — in *Systemeinstellungen → Datenschutz & Sicherheit* auf „Trotzdem öffnen" klicken oder einmalig im Terminal ausführen:
+**macOS (Apple Silicon):** DMG öffnen, `.app` in den Programme-Ordner ziehen und starten. Da die App nicht von Apple signiert ist, erscheint beim ersten Start ein Sicherheitshinweis — in *Systemeinstellungen → Datenschutz & Sicherheit* auf „Trotzdem öffnen" klicken oder einmalig im Terminal ausführen:
 ```bash
 xattr -cr /Applications/BodeDiagrammTool.app
 ```

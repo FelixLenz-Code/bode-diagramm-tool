@@ -83,7 +83,7 @@ jobs:
 
   # ── macOS DMG ─────────────────────────────────────────────────────────────────
   macos-dmg:
-    runs-on: macos-13   # x86_64 – läuft nativ auf Intel und per Rosetta auf Apple Silicon
+    runs-on: macos-latest   # arm64 – Apple Silicon (M1/M2/M3)
 
     steps:
       - uses: actions/checkout@v6
