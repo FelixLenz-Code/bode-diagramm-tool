@@ -6,7 +6,7 @@ Desktop-Anwendung zur Visualisierung von Frequenzgängen aus gemessenen Übertra
 
 ## Screenshots
 
-![Hauptfenster mit Bode-Diagramm](screenshots/preview.png)
+![Hauptfenster mit Bode-Diagramm](screenshots/preview_v1.4.png)
 
 ---
 
