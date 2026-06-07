@@ -799,8 +799,15 @@ class BodeTool:
         hdr.pack(fill=tk.X)
         hdr.pack_propagate(False)
 
-        tk.Label(hdr, text="📈", bg=P["header"],
-                 font=(_SANS, 20)).pack(side=tk.LEFT, padx=(16, 6))
+        try:
+            _logo = _ITk.PhotoImage(
+                Image.open(BytesIO(base64.b64decode(_ICON_PNG))).resize(
+                    (32, 32), Image.LANCZOS))
+            self._hdr_logo = _logo  # keep reference so GC doesn't blank it
+            tk.Label(hdr, image=_logo, bg=P["header"]).pack(
+                side=tk.LEFT, padx=(16, 6))
+        except Exception:
+            pass
         tk.Label(hdr, text="Bode Diagramm Tool",
                  bg=P["header"], fg=P["text_inv"],
                  font=(_SANS, 14, "bold")).pack(side=tk.LEFT, padx=(0, 28))
@@ -1478,9 +1485,21 @@ class BodeTool:
         hdr = tk.Frame(win, bg=P["header"], height=72)
         hdr.pack(fill=tk.X)
         hdr.pack_propagate(False)
-        tk.Label(hdr, text="📈  Bode Diagramm Tool",
-                 bg=P["header"], fg=P["text_inv"],
-                 font=FONT_LG).pack(expand=True)
+        try:
+            _alogo = _ITk.PhotoImage(
+                Image.open(BytesIO(base64.b64decode(_ICON_PNG))).resize(
+                    (28, 28), Image.LANCZOS))
+            self._about_logo = _alogo
+            inner = tk.Frame(hdr, bg=P["header"])
+            inner.pack(expand=True)
+            tk.Label(inner, image=_alogo, bg=P["header"]).pack(side=tk.LEFT, padx=(0, 8))
+            tk.Label(inner, text="Bode Diagramm Tool",
+                     bg=P["header"], fg=P["text_inv"],
+                     font=FONT_LG).pack(side=tk.LEFT)
+        except Exception:
+            tk.Label(hdr, text="Bode Diagramm Tool",
+                     bg=P["header"], fg=P["text_inv"],
+                     font=FONT_LG).pack(expand=True)
         _divider(win).pack(fill=tk.X)
 
         # Body
