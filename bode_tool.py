@@ -465,6 +465,7 @@ class UnitEntry(tk.Frame):
             relief="flat", bd=0, font=FONT, width=entry_width,
             insertbackground=P["text_inv"],
             selectbackground=P["accent"], selectforeground="#ffffff",
+            highlightthickness=0,
         )
         self.entry.pack(side=tk.LEFT, padx=(8, 0), pady=5)
 
@@ -515,8 +516,9 @@ class UnitEntry(tk.Frame):
 
     def _highlight(self, on: bool):
         # Color the wrapper frame (master) — it provides the visible border
+        unfocused = P["muted"] if _WIN else P["sep"]
         try:
-            self.master.configure(bg=P["accent"] if on else P["sep"])
+            self.master.configure(bg=P["accent"] if on else unfocused)
         except tk.TclError:
             pass
 
@@ -984,10 +986,12 @@ class BodeTool:
                  font=FONT, anchor="w").grid(
             row=row, column=0, sticky="w", pady=(0, 6))
 
-        # Wrapper frame provides a reliable 1px border on all platforms.
-        # On Windows, highlightthickness on a Frame is only visible when
-        # focused, so we use the wrapper's bg as the persistent border color.
-        bdr = tk.Frame(parent, bg=P["sep"], padx=1, pady=1)
+        # Wrapper frame provides the visible border via its bg color.
+        # On Windows the entry's system border would swallow a 1px gap,
+        # so we use a brighter color and 2px padding there.
+        _bc = P["muted"] if _WIN else P["sep"]
+        _bp = 2          if _WIN else 1
+        bdr = tk.Frame(parent, bg=_bc, padx=_bp, pady=_bp)
         bdr.grid(row=row, column=1, sticky="ew", padx=(6, 0), pady=(0, 6))
         bdr.columnconfigure(0, weight=1)
         ue = UnitEntry(bdr, units, default, entry_width=11, fixed_unit=fixed_unit)
@@ -1137,6 +1141,59 @@ class BodeTool:
             _btn(br, "OK", win.destroy, P["accent"], padx=14).pack(side=tk.RIGHT, ipady=4)
 
         # Centre on parent
+        win.update_idletasks()
+        pw, ph = self.root.winfo_width(), self.root.winfo_height()
+        px, py = self.root.winfo_x(),     self.root.winfo_y()
+        ww, wh = win.winfo_reqwidth(),    win.winfo_reqheight()
+        win.geometry(f"+{px + (pw - ww)//2}+{py + (ph - wh)//2}")
+
+        win.wait_window()
+        return result[0]
+
+    def _ask_import_mode(self, n_existing: int) -> str | None:
+        """Ask how to handle existing data when importing.
+        Returns 'merge', 'replace', or None (cancel)."""
+        result = [None]
+        win = tk.Toplevel(self.root)
+        win.title("Daten vorhanden")
+        win.configure(bg=P["bg"])
+        win.resizable(False, False)
+        win.grab_set()
+        win.focus_set()
+
+        tk.Frame(win, bg=P["warning"], height=5).pack(fill=tk.X)
+
+        body = tk.Frame(win, bg=P["bg"])
+        body.pack(fill=tk.BOTH, expand=True, padx=24, pady=(18, 10))
+
+        top = tk.Frame(body, bg=P["bg"])
+        top.pack(fill=tk.X, pady=(0, 10))
+        tk.Label(top, text="?", bg=P["warning"], fg="#ffffff",
+                 font=FONT_B, padx=7, pady=2).pack(side=tk.LEFT)
+        tk.Label(top, text="  Daten vorhanden", bg=P["bg"], fg=P["text"],
+                 font=FONT_B).pack(side=tk.LEFT)
+
+        tk.Label(body,
+                 text=f"Es sind bereits {n_existing} Datenpunkt"
+                      f"{'e' if n_existing != 1 else ''} vorhanden.\n"
+                      "Wie soll fortgefahren werden?",
+                 bg=P["bg"], fg=P["text"],
+                 font=FONT, wraplength=320, justify="left").pack(anchor="w")
+
+        br = tk.Frame(win, bg=P["bg"])
+        br.pack(fill=tk.X, padx=24, pady=(14, 20))
+
+        def _pick(val):
+            result[0] = val
+            win.destroy()
+
+        _btn(br, "Zusammenführen", lambda: _pick("merge"),
+             P["accent"], padx=10).pack(side=tk.LEFT, ipady=4)
+        _btn(br, "Ersetzen", lambda: _pick("replace"),
+             P["warning"], padx=10).pack(side=tk.LEFT, padx=(8, 0), ipady=4)
+        _btn(br, "Abbrechen", win.destroy,
+             "#2e4470", P["text_inv"], padx=10).pack(side=tk.RIGHT, ipady=4)
+
         win.update_idletasks()
         pw, ph = self.root.winfo_width(), self.root.winfo_height()
         px, py = self.root.winfo_x(),     self.root.winfo_y()
@@ -1321,7 +1378,19 @@ class BodeTool:
         self._do_import_csv(path)
 
     def _do_import_csv(self, path: str):
-        self._save_undo_state()
+        existing = self.tree.get_children()
+        if existing:
+            mode = self._ask_import_mode(len(existing))
+            if mode is None:
+                return
+            if mode == "replace":
+                self._save_undo_state()
+                for item in existing:
+                    self.tree.delete(item)
+            else:
+                self._save_undo_state()
+        else:
+            self._save_undo_state()
         delim, decimal = self._sniff(path)
 
         def parse(s):
