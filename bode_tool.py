@@ -1,4 +1,5 @@
 import sys
+import json
 import base64
 from io import BytesIO
 import tkinter as tk
@@ -221,6 +222,10 @@ _ICON_PNG = (
     "OxkCgqielXi/tuIv8MgYEIQ5K/1Svelv8MkgEKuZZn9F+/++3sIlcGX2QgAAAABJRU5ErkJggg=="
 )
 
+
+# ── Recent-files persistence ───────────────────────────────────────────────────
+_RECENT_MAX  = 8
+_RECENT_PATH = Path.home() / ".bode_tool_recent.json"
 
 # ── Data constants ─────────────────────────────────────────────────────────────
 COLUMNS    = ("freq", "amplitude", "phase")
@@ -524,7 +529,7 @@ class UnitEntry(tk.Frame):
 
 # ── Main application ───────────────────────────────────────────────────────────
 class BodeTool:
-    def __init__(self, root: tk.Tk):
+    def __init__(self, root: tk.Tk, initial_file: str | None = None):
         self.root = root
         self.root.title("Bode Diagramm Tool")
         self.root.geometry("1340x800")
@@ -535,6 +540,8 @@ class BodeTool:
         self.opt_grid    = tk.BooleanVar(value=True)
         self.opt_dots    = tk.BooleanVar(value=True)
         self._dirty = False
+        self._syncing_xlim = False
+        self._xlim_cids: list = []
         self._undo_stack: list = []
         self._redo_stack: list = []
         self._configure_ttk()
@@ -544,6 +551,8 @@ class BodeTool:
         self._bind_shortcuts()
         self.project_var.trace_add("write", lambda *_: self._set_dirty())
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        if initial_file and Path(initial_file).is_file():
+            self.root.after(150, lambda: self._do_import_csv(initial_file))
 
     # ── Menu bar ──────────────────────────────────────────────────────────────
     def _build_menubar(self):
@@ -574,6 +583,9 @@ class BodeTool:
         m_file.add_separator()
         m_file.add_command(label="  CSV importieren …",
                            command=d(self._import_csv), accelerator="Strg+O")
+        self._m_recent = tk.Menu(m_file, tearoff=0, **MK)
+        m_file.add_cascade(label="  Zuletzt geöffnet", menu=self._m_recent)
+        self._rebuild_recent_menu()
         m_file.add_command(label="  CSV exportieren …",
                            command=d(self._export_csv), accelerator="Strg+S")
         m_file.add_separator()
@@ -1043,6 +1055,31 @@ class BodeTool:
                     linestyle=":", linewidth=0.5, alpha=0.6)
         self.ax_phase.set_xlabel("Frequenz (Hz)", fontsize=9, color=P["text"])
         self._refresh_suptitle()
+        self._connect_xlim_sync()
+
+    def _connect_xlim_sync(self):
+        """Keep both plots' frequency axis in sync during zoom/pan."""
+        for ax, cid in self._xlim_cids:
+            try:
+                ax.callbacks.disconnect(cid)
+            except Exception:
+                pass
+
+        def _on_mag_xlim(ax):
+            if not self._syncing_xlim:
+                self._syncing_xlim = True
+                self.ax_phase.set_xlim(ax.get_xlim())
+                self._syncing_xlim = False
+
+        def _on_phase_xlim(ax):
+            if not self._syncing_xlim:
+                self._syncing_xlim = True
+                self.ax_mag.set_xlim(ax.get_xlim())
+                self._syncing_xlim = False
+
+        cid1 = self.ax_mag.callbacks.connect('xlim_changed', _on_mag_xlim)
+        cid2 = self.ax_phase.callbacks.connect('xlim_changed', _on_phase_xlim)
+        self._xlim_cids = [(self.ax_mag, cid1), (self.ax_phase, cid2)]
 
     def _refresh_suptitle(self):
         name = self.project_var.get().strip()
@@ -1209,6 +1246,64 @@ class BodeTool:
             rows.append((float(v[0]), float(v[1]), float(v[2])))
         return sorted(rows, key=lambda r: r[0])
 
+    # ── Recent files ──────────────────────────────────────────────────────────
+    def _load_recent(self) -> list:
+        try:
+            data = json.loads(_RECENT_PATH.read_text(encoding="utf-8"))
+            return [p for p in data if isinstance(p, str)]
+        except Exception:
+            return []
+
+    def _save_recent(self, path: str):
+        recent = [p for p in self._load_recent() if p != path]
+        recent.insert(0, path)
+        try:
+            _RECENT_PATH.write_text(
+                json.dumps(recent[:_RECENT_MAX], ensure_ascii=False, indent=2),
+                encoding="utf-8")
+        except Exception:
+            pass
+        self._rebuild_recent_menu()
+
+    def _rebuild_recent_menu(self):
+        self._m_recent.delete(0, tk.END)
+        recent = self._load_recent()
+        if not recent:
+            self._m_recent.add_command(label="  (keine)", state="disabled")
+            return
+        for path in recent:
+            name = Path(path).name
+            self._m_recent.add_command(
+                label=f"  {name}",
+                command=lambda p=path: self.root.after(5, lambda p=p: self._open_recent(p)))
+        self._m_recent.add_separator()
+        self._m_recent.add_command(
+            label="  Liste leeren",
+            command=lambda: self.root.after(5, self._clear_recent))
+
+    def _open_recent(self, path: str):
+        if not Path(path).exists():
+            self._dlg("Datei nicht gefunden",
+                      f"Die Datei wurde nicht gefunden und wird aus der Liste entfernt:\n{path}",
+                      "warn")
+            recent = [p for p in self._load_recent() if p != path]
+            try:
+                _RECENT_PATH.write_text(
+                    json.dumps(recent, ensure_ascii=False, indent=2),
+                    encoding="utf-8")
+            except Exception:
+                pass
+            self._rebuild_recent_menu()
+            return
+        self._do_import_csv(path)
+
+    def _clear_recent(self):
+        try:
+            _RECENT_PATH.write_text("[]", encoding="utf-8")
+        except Exception:
+            pass
+        self._rebuild_recent_menu()
+
     # ── CSV ──────────────────────────────────────────────────────────────────
     def _sniff(self, path):
         with open(path, encoding="utf-8-sig", errors="replace") as f:
@@ -1223,6 +1318,9 @@ class BodeTool:
             filetypes=[("CSV Dateien", "*.csv"), ("Alle Dateien", "*.*")])
         if not path:
             return
+        self._do_import_csv(path)
+
+    def _do_import_csv(self, path: str):
         self._save_undo_state()
         delim, decimal = self._sniff(path)
 
@@ -1291,6 +1389,7 @@ class BodeTool:
             self._dlg("Importfehler", str(exc), "error")
             return
 
+        self._save_recent(path)
         self._update_status()
         self._data_changed()
         msg = f"{count} Zeilen importiert."
@@ -1537,5 +1636,6 @@ if __name__ == "__main__":
         root.iconphoto(True, _img)
     except Exception:
         pass
-    BodeTool(root)
+    _initial = sys.argv[1] if len(sys.argv) > 1 else None
+    BodeTool(root, initial_file=_initial)
     root.mainloop()

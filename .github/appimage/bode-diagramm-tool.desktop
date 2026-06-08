@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=Bode Diagramm Tool
-Exec=BodeDiagrammTool
+Exec=BodeDiagrammTool %f
+MimeType=text/csv;
 Icon=bode-diagramm-tool
 Type=Application
 Categories=Science;
